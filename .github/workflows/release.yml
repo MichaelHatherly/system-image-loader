@@ -1,0 +1,230 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      matrix:
+        target: [
+          x86_64-pc-windows-gnu,
+          x86_64-pc-windows-msvc,
+          x86_64-apple-darwin,
+          x86_64-unknown-linux-gnu,
+          i686-unknown-linux-gnu,
+          aarch64-unknown-linux-gnu,
+          aarch64-apple-darwin
+          ]
+        include:
+          - target: x86_64-pc-windows-gnu
+            os: windows
+          - target: x86_64-pc-windows-msvc
+            os: windows
+          - target: x86_64-apple-darwin
+            os: macos
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu
+          - target: i686-unknown-linux-gnu
+            os: ubuntu
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu
+          - target: aarch64-apple-darwin
+            os: macos
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Add mingw64 to path for x86_64-gnu
+        run: echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
+        if: matrix.target == 'x86_64-pc-windows-gnu'
+        shell: bash
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          default: true
+          target: ${{matrix.target}}
+
+      - name: Release build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          use-cross: ${{ matrix.os == 'ubuntu' }}
+          args: --release --target ${{matrix.target}}
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ${{matrix.target}}
+          path: |
+            target/${{matrix.target}}/release/system-image-loader*
+            !target/${{matrix.target}}/release/*.d
+
+  test:
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      matrix:
+        target: [
+          x86_64-pc-windows-gnu,
+          x86_64-pc-windows-msvc,
+          x86_64-apple-darwin,
+          x86_64-unknown-linux-gnu,
+          ]
+        include:
+          - target: x86_64-pc-windows-gnu
+            os: windows
+          - target: x86_64-pc-windows-msvc
+            os: windows
+          - target: x86_64-apple-darwin
+            os: macos
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Add mingw64 to path for x86_64-gnu
+        run: echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
+        if: matrix.target == 'x86_64-pc-windows-gnu'
+        shell: bash
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          default: true
+          target: ${{matrix.target}}
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --target ${{matrix.target}}
+
+  tarballs:
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download Windows x64 artifact (GNU)
+        uses: actions/download-artifact@v3
+        with:
+          name: x86_64-pc-windows-gnu
+          path: target/x86_64-pc-windows-gnu
+
+      - name: Download Windows x64 artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: x86_64-pc-windows-msvc
+          path: target/x86_64-pc-windows-msvc
+
+      - name: Download Linux x64 artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: x86_64-unknown-linux-gnu
+          path: target/x86_64-unknown-linux-gnu
+
+      - name: Download Linux x86 artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: i686-unknown-linux-gnu
+          path: target/i686-unknown-linux-gnu
+
+      - name: Download MacOS x64 artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: x86_64-apple-darwin
+          path: target/x86_64-apple-darwin
+
+      - name: Download MacOS aarch64 artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: aarch64-apple-darwin
+          path: target/aarch64-apple-darwin
+
+      - name: Download Linux aarch64 artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: aarch64-unknown-linux-gnu
+          path: target/aarch64-unknown-linux-gnu
+
+      - name: Set permissions
+        run: |
+          chmod a+rx target/x86_64-unknown-linux-gnu/system-image-loader
+          chmod a+rx target/i686-unknown-linux-gnu/system-image-loader
+          chmod a+rx target/x86_64-apple-darwin/system-image-loader
+          chmod a+rx target/aarch64-apple-darwin/system-image-loader
+          chmod a+rx target/aarch64-unknown-linux-gnu/system-image-loader
+
+      - name: Export version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          export VERSION=$(echo $GH_REF | sed 's:refs/tags/v::')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+        env:
+            GH_REF: ${{ github.ref }}
+
+      - name: Create archives
+        run: |
+          mkdir public
+          mkdir public/bin
+
+          cd target/x86_64-pc-windows-gnu
+          tar -czvf ../../public/bin/system-image-loader-${{ env.VERSION }}-x86_64-pc-windows-gnu.tar.gz .
+
+          cd ../../target/x86_64-pc-windows-msvc
+          tar -czvf ../../public/bin/system-image-loader-${{ env.VERSION }}-x86_64-pc-windows-msvc.tar.gz .
+
+          cd ../../target/x86_64-unknown-linux-gnu
+          tar -czvf ../../public/bin/system-image-loader-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz .
+         
+          cd ../../target/i686-unknown-linux-gnu
+          tar -czvf ../../public/bin/system-image-loader-${{ env.VERSION }}-i686-unknown-linux-gnu.tar.gz .
+
+          cd ../../target/x86_64-apple-darwin
+          tar -czvf ../../public/bin/system-image-loader-${{ env.VERSION }}-x86_64-apple-darwin.tar.gz .
+
+          cd ../../target/aarch64-apple-darwin
+          tar -czvf ../../public/bin/system-image-loader-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz .
+
+          cd ../../target/aarch64-unknown-linux-gnu
+          tar -czvf ../../public/bin/system-image-loader-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz .
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: tarballs
+          path: public/bin/*
+
+  deploy:
+    needs: [tarballs, test]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download tarball artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: tarballs
+          path: public/bin
+      - name: Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "public/bin/*.tar.gz"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: true
+
+  release:
+    needs: [deploy]
+    environment: release-channel
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Release
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: false
+          allowUpdates: true
