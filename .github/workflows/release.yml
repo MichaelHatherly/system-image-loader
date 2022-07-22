@@ -154,6 +154,8 @@ jobs:
 
       - name: Set permissions
         run: |
+          chmod a+rx target/x86_64-pc-windows-gnu/system-image-loader.exe
+          chmod a+rx target/x86_64-pc-windows-msvc/system-image-loader.exe
           chmod a+rx target/x86_64-unknown-linux-gnu/system-image-loader
           chmod a+rx target/i686-unknown-linux-gnu/system-image-loader
           chmod a+rx target/x86_64-apple-darwin/system-image-loader
