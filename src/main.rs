@@ -13,6 +13,7 @@ use toml;
 struct Config {
     image: String,
     depot: String,
+    load_path: String,
 }
 
 /// Julia system image loader.
@@ -106,6 +107,7 @@ fn run() -> Result<i32> {
             .args(&args.julia_args)
             .arg(format!("--sysimage={}", config.image))
             .env("JULIA_DEPOT_PATH", config.depot)
+            .env("JULIA_LOAD_PATH", config.load_path)
             .spawn()
             .with_context(|| "failed to start main julia process.")?;
 
