@@ -104,6 +104,7 @@ fn run() -> Result<i32> {
         // The main julia process: started with the depot path and sysimage image returned from the
         // first julia init process.
         let mut child_process = std::process::Command::new("julia")
+            .arg(format!("+{}", args.julia))
             .args(&args.julia_args)
             .arg(format!("--sysimage={}", config.image))
             .env("JULIA_DEPOT_PATH", config.depot)
