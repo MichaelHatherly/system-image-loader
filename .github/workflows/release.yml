@@ -39,7 +39,7 @@ jobs:
           - target: aarch64-apple-darwin
             os: macos
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Add mingw64 to path for x86_64-gnu
         run: echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
@@ -86,7 +86,7 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Add mingw64 to path for x86_64-gnu
         run: echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
