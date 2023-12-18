@@ -59,7 +59,7 @@ jobs:
           use-cross: ${{ matrix.os == 'ubuntu' }}
           args: --release --target ${{matrix.target}}
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: ${{matrix.target}}
           path: |
@@ -196,7 +196,7 @@ jobs:
           cd ../../target/aarch64-unknown-linux-gnu
           tar -czvf ../../public/bin/system-image-loader-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz .
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: tarballs
           path: public/bin/*
