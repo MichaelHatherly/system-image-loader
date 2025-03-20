@@ -105,8 +105,8 @@ fn run() -> Result<i32> {
         // first julia init process.
         let mut child_process = std::process::Command::new("julia")
             .arg(format!("+{}", args.julia))
-            .args(&args.julia_args)
             .arg(format!("--sysimage={}", config.image))
+            .args(&args.julia_args)
             .env("JULIA_DEPOT_PATH", config.depot)
             .env("JULIA_LOAD_PATH", config.load_path)
             .spawn()
